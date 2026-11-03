@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
 function App() {
-  // Weather State (defaults to Kampala, Uganda coordinates as an example)
   const [weather, setWeather] = useState({
     temperature: '--',
     humidity: '--',
     condition: 'Loading weather...',
-    riskLevel: 'Normal',
-    riskColor: 'bg-green-100 text-green-800'
+    bg: '#fef3c7',
+    color: '#92400e'
   });
   
-  // Plots State
   const [plots, setPlots] = useState([
     { id: '1', name: 'Plot A', crop: 'Maize', stage: 'Vegetative' },
     { id: '2', name: 'Plot B', crop: 'Beans', stage: 'Flowering' }
@@ -18,16 +16,10 @@ function App() {
   const [plotForm, setPlotForm] = useState({ name: '', crop: '', stage: 'Vegetative' });
   const [showAddPlot, setShowAddPlot] = useState(false);
 
-  // Expenses State
   const [expenses, setExpenses] = useState([]);
-  const [expenseForm, setExpenseForm] = useState({ 
-    plotId: '1', 
-    category: 'Seeds', 
-    amount: '' 
-  });
+  const [expenseForm, setExpenseForm] = useState({ plotId: '1', category: 'Seeds', amount: '' });
   const [submittedExpense, setSubmittedExpense] = useState(false);
 
-  // Fetch Real Live Weather from Open-Meteo API (Kampala: 0.3476° N, 32.5825° E)
   useEffect(() => {
     fetch('https://api.open-meteo.com/v1/forecast?latitude=0.3476&longitude=32.5825&current=temperature_2m,relative_humidity_2m,precipitation')
       .then(res => res.json())
@@ -37,65 +29,42 @@ function App() {
           const humidity = data.current.relative_humidity_2m;
           const precip = data.current.precipitation;
 
-          // Dynamic Pest/Blight Risk Logic based on humidity and rain
           let condition = 'Low Blight Risk';
-          let riskColor = 'bg-green-100 text-green-800';
+          let bg = '#d1fae5';
+          let color = '#065f46';
 
           if (humidity > 80 && temp > 24) {
             condition = 'High Blight Risk (High Humidity)';
-            riskColor = 'bg-red-100 text-red-800';
+            bg = '#fee2e2';
+            color = '#991b1b';
           } else if (humidity > 70 || precip > 0) {
             condition = 'Moderate Fungal / Pest Risk';
-            riskColor = 'bg-yellow-100 text-yellow-800';
+            bg = '#fef3c7';
+            color = '#92400e';
           }
 
-          setWeather({
-            temperature: temp,
-            humidity: humidity,
-            condition: condition,
-            riskColor: riskColor
-          });
+          setWeather({ temperature: temp, humidity: humidity, condition, bg, color });
         }
       })
-      .catch(err => {
-        console.log('Weather API error, fallback to mock', err);
-        setWeather({
-          temperature: '26',
-          humidity: '78',
-          condition: 'Moderate Blight Risk',
-          riskColor: 'bg-yellow-100 text-yellow-800'
-        });
+      .catch(() => {
+        setWeather({ temperature: '26', humidity: '78', condition: 'Moderate Risk', bg: '#fef3c7', color: '#92400e' });
       });
   }, []);
 
-  // Handle Adding a New Plot
   const handleAddPlot = (e) => {
     e.preventDefault();
-    const newPlot = {
-      id: Date.now().toString(),
-      name: plotForm.name,
-      crop: plotForm.crop,
-      stage: plotForm.stage
-    };
-    setPlots([...plots, newPlot]);
+    setPlots([...plots, { id: Date.now().toString(), ...plotForm }]);
     setPlotForm({ name: '', crop: '', stage: 'Vegetative' });
     setShowAddPlot(false);
   };
 
-  // Handle Removing a Plot
   const handleRemovePlot = (id) => {
     setPlots(plots.filter(p => p.id !== id));
   };
 
-  // Handle Expense Submission
   const handleExpenseSubmit = (e) => {
     e.preventDefault();
-    const newExpense = {
-      plotId: expenseForm.plotId,
-      category: expenseForm.category,
-      amount: expenseForm.amount,
-      date: new Date().toLocaleDateString()
-    };
+    const newExpense = { ...expenseForm, date: new Date().toLocaleDateString() };
 
     fetch('http://localhost:5000/api/expenses', {
       method: 'POST',
@@ -109,177 +78,179 @@ function App() {
         setExpenseForm({ plotId: plots[0] ? plots[0].id : '1', category: 'Seeds', amount: '' });
         setTimeout(() => setSubmittedExpense(false), 3000);
       })
-      .catch(err => console.log('Error posting expense', err));
+      .catch(err => console.log('Expense error:', err));
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold text-green-800">AgriPulse Portal</h1>
-        <p className="text-gray-600">Web-Based Farm Management & Advisory</p>
+    <div>
+      <header className="app-header">
+        <h1 className="app-title">🌱 AgriPulse Farm Portal</h1>
+        <p className="app-subtitle">Smart Farm Management & Advisory System • Central Region (UG)</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Dynamic Live Weather & Pest Risk Widget */}
-        <div className="bg-white p-5 rounded-xl shadow-md border-t-4 border-yellow-500 flex flex-col justify-between">
-          <div>
-            <h3 className="font-bold text-lg text-gray-800 mb-2">Weather & Pest Risk</h3>
-            <p className="text-gray-600 text-sm">
-              Temp: <span className="font-semibold text-gray-800">{weather.temperature}°C</span> | Humidity: <span className="font-semibold text-gray-800">{weather.humidity}%</span>
-            </p>
-            <p className="text-[11px] text-gray-400 mt-1">Location: Central Region (Live)</p>
-          </div>
-          <div className={`mt-4 inline-block text-xs font-semibold px-2.5 py-1 rounded text-center ${weather.riskColor}`}>
-            {weather.condition}
-          </div>
-        </div>
-        
-        {/* Active Plots Management */}
-        <div className="bg-white p-5 rounded-xl shadow-md border-t-4 border-green-600 flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-bold text-lg text-gray-800">Active Plots</h3>
-              <button 
-                onClick={() => setShowAddPlot(!showAddPlot)}
-                className="text-xs bg-green-100 text-green-800 font-semibold px-2 py-1 rounded hover:bg-green-200"
-              >
-                {showAddPlot ? 'Cancel' : '+ Add Plot'}
-              </button>
+      <main className="main-container">
+        <div className="card-grid">
+          
+          {/* Card 1: Weather */}
+          <div className="card">
+            <div>
+              <h3 className="card-title">🌤️ Weather & Pest Risk</h3>
+              <div className="metric-box">
+                <div className="metric-row">
+                  <span>Temperature</span>
+                  <strong>{weather.temperature}°C</strong>
+                </div>
+                <div className="metric-row">
+                  <span>Humidity</span>
+                  <strong>{weather.humidity}%</strong>
+                </div>
+              </div>
             </div>
+            <div className="risk-badge" style={{ backgroundColor: weather.bg, color: weather.color }}>
+              ⚠️ {weather.condition}
+            </div>
+          </div>
 
-            {/* Add Plot Form Modal/Drawer */}
-            {showAddPlot && (
-              <form onSubmit={handleAddPlot} className="bg-gray-50 p-3 rounded mb-3 border space-y-2">
-                <h4 className="text-xs font-bold text-gray-700">New Plot Details</h4>
-                <input 
-                  type="text" 
-                  placeholder="Plot Name (e.g. Plot C)" 
-                  value={plotForm.name}
-                  onChange={e => setPlotForm({...plotForm, name: e.target.value})}
-                  className="w-full p-2 border rounded text-xs bg-white"
-                  required 
-                />
-                <input 
-                  type="text" 
-                  placeholder="Crop Type (e.g. Tomatoes)" 
-                  value={plotForm.crop}
-                  onChange={e => setPlotForm({...plotForm, crop: e.target.value})}
-                  className="w-full p-2 border rounded text-xs bg-white"
-                  required 
-                />
-                <select 
-                  value={plotForm.stage}
-                  onChange={e => setPlotForm({...plotForm, stage: e.target.value})}
-                  className="w-full p-2 border rounded text-xs bg-white"
-                >
-                  <option value="Seedling">Seedling Stage</option>
-                  <option value="Vegetative">Vegetative Stage</option>
-                  <option value="Flowering">Flowering Stage</option>
-                  <option value="Harvesting">Harvesting Stage</option>
-                </select>
-                <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white p-2 rounded text-xs font-bold shadow-sm">
-                  Save Plot
+          {/* Card 2: Active Plots */}
+          <div className="card">
+            <div>
+              <div className="card-title">
+                <span>🌾 Active Plots</span>
+                <button className="btn-secondary" onClick={() => setShowAddPlot(!showAddPlot)}>
+                  {showAddPlot ? 'Cancel' : '+ Add Plot'}
                 </button>
-              </form>
-            )}
+              </div>
 
-            {/* Plots List */}
-            {plots.length === 0 ? (
-              <p className="text-xs text-gray-400">No active plots added.</p>
-            ) : (
-              <ul className="space-y-2 max-h-56 overflow-y-auto">
-                {plots.map(p => (
-                  <li key={p.id} className="text-xs bg-gray-50 p-2 rounded border flex justify-between items-center">
-                    <div>
-                      <span className="font-bold text-gray-800">{p.name}:</span> {p.crop} 
-                      <span className="block text-gray-500 text-[10px]">({p.stage})</span>
-                    </div>
-                    <button 
-                      onClick={() => handleRemovePlot(p.id)}
-                      className="text-red-600 hover:text-red-800 font-bold px-1.5 py-0.5 text-xs rounded bg-red-50 border border-red-200"
-                      title="Remove Plot"
+              {showAddPlot && (
+                <form onSubmit={handleAddPlot} className="metric-box">
+                  <div className="form-group">
+                    <input 
+                      type="text" 
+                      placeholder="Plot Name (e.g. Plot C)" 
+                      value={plotForm.name}
+                      onChange={e => setPlotForm({...plotForm, name: e.target.value})}
+                      className="form-control"
+                      required 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <input 
+                      type="text" 
+                      placeholder="Crop Type (e.g. Tomatoes)" 
+                      value={plotForm.crop}
+                      onChange={e => setPlotForm({...plotForm, crop: e.target.value})}
+                      className="form-control"
+                      required 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <select 
+                      value={plotForm.stage}
+                      onChange={e => setPlotForm({...plotForm, stage: e.target.value})}
+                      className="form-control"
                     >
-                      ✕
-                    </button>
+                      <option value="Seedling">Seedling Stage</option>
+                      <option value="Vegetative">Vegetative Stage</option>
+                      <option value="Flowering">Flowering Stage</option>
+                      <option value="Harvesting">Harvesting Stage</option>
+                    </select>
+                  </div>
+                  <button type="submit" className="btn-primary">Save Plot</button>
+                </form>
+              )}
+
+              <ul className="list-container">
+                {plots.map(p => (
+                  <li key={p.id} className="list-item">
+                    <div>
+                      <strong>{p.name}:</strong> {p.crop}
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>Stage: {p.stage}</div>
+                    </div>
+                    <button className="btn-delete" onClick={() => handleRemovePlot(p.id)}>✕</button>
                   </li>
                 ))}
               </ul>
-            )}
+            </div>
           </div>
-        </div>
 
-        {/* Quick Log Expense Form */}
-        <div className="bg-white p-5 rounded-xl shadow-md border-t-4 border-blue-600">
-          <h3 className="font-bold text-lg text-gray-800 mb-2">Quick Log Expense</h3>
-          {submittedExpense && <div className="mb-2 text-xs text-green-600 font-semibold">Expense logged successfully!</div>}
-          
-          <form onSubmit={handleExpenseSubmit} className="space-y-3">
+          {/* Card 3: Quick Log Expense */}
+          <div className="card">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Select Plot</label>
-              <select 
-                value={expenseForm.plotId}
-                onChange={e => setExpenseForm({...expenseForm, plotId: e.target.value})}
-                className="w-full p-2 border rounded text-sm bg-white"
-              >
-                {plots.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.crop})</option>
-                ))}
-              </select>
+              <h3 className="card-title">💰 Quick Log Expense</h3>
+              
+              {submittedExpense && (
+                <div style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', marginBottom: '12px' }}>
+                  ✓ Expense logged successfully!
+                </div>
+              )}
+
+              <form onSubmit={handleExpenseSubmit}>
+                <div className="form-group">
+                  <label className="form-label">Select Plot</label>
+                  <select 
+                    value={expenseForm.plotId}
+                    onChange={e => setExpenseForm({...expenseForm, plotId: e.target.value})}
+                    className="form-control"
+                  >
+                    {plots.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.crop})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Category</label>
+                  <select 
+                    value={expenseForm.category}
+                    onChange={e => setExpenseForm({...expenseForm, category: e.target.value})}
+                    className="form-control"
+                  >
+                    <option value="Seeds">Seeds</option>
+                    <option value="Fertilizer">Fertilizer</option>
+                    <option value="Pesticide">Pesticide</option>
+                    <option value="Labor">Labor</option>
+                    <option value="Equipment">Equipment</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Amount (UGX)</label>
+                  <input 
+                    type="number" 
+                    placeholder="e.g. 50000" 
+                    value={expenseForm.amount}
+                    onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})}
+                    className="form-control"
+                    required 
+                  />
+                </div>
+
+                <button type="submit" className="btn-primary">Record Expense</button>
+              </form>
+
+              <div className="history-section">
+                <span className="form-label">Recent History</span>
+                {expenses.length === 0 ? (
+                  <p style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', margin: '4px 0 0 0' }}>No expenses recorded yet.</p>
+                ) : (
+                  <ul className="list-container">
+                    {expenses.map((exp, index) => {
+                      const targetPlot = plots.find(p => p.id === exp.plotId);
+                      return (
+                        <li key={index} className="list-item">
+                          <span>{exp.category} ({targetPlot ? targetPlot.name : 'Plot'})</span>
+                          <strong style={{ color: '#047857' }}>UGX {Number(exp.amount).toLocaleString()}</strong>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Expense Category</label>
-              <select 
-                value={expenseForm.category}
-                onChange={e => setExpenseForm({...expenseForm, category: e.target.value})}
-                className="w-full p-2 border rounded text-sm bg-white"
-              >
-                <option value="Seeds">Seeds</option>
-                <option value="Fertilizer">Fertilizer</option>
-                <option value="Pesticide">Pesticide</option>
-                <option value="Labor">Labor</option>
-                <option value="Equipment">Equipment</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Amount (UGX)</label>
-              <input 
-                type="number" 
-                placeholder="e.g. 50000" 
-                value={expenseForm.amount}
-                onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})}
-                className="w-full p-2 border rounded text-sm"
-                required 
-              />
-            </div>
-
-            <button type="submit" className="w-full bg-green-600 text-white p-2 rounded text-sm font-semibold hover:bg-green-700">
-              Add Expense
-            </button>
-          </form>
-
-          {/* Recorded Expenses History List */}
-          <div className="mt-5 border-t pt-3">
-            <h4 className="font-bold text-sm text-gray-700 mb-2">Recorded Expenses History:</h4>
-            {expenses.length === 0 ? (
-              <p className="text-xs text-gray-400">No expenses recorded yet.</p>
-            ) : (
-              <ul className="space-y-2 max-h-32 overflow-y-auto">
-                {expenses.map((exp, index) => {
-                  const targetPlot = plots.find(p => p.id === exp.plotId);
-                  return (
-                    <li key={index} className="text-xs bg-gray-50 p-2 rounded border flex justify-between items-center">
-                      <span>{exp.category} ({targetPlot ? targetPlot.name : 'Plot'})</span>
-                      <span className="font-bold text-green-700">UGX {Number(exp.amount).toLocaleString()}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
           </div>
+
         </div>
-      </div>
+      </main>
     </div>
   );
 }
