@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
 function App() {
-  const [weather, setWeather] = useState(null);
+  // Weather State (defaults to Kampala, Uganda coordinates as an example)
+  const [weather, setWeather] = useState({
+    temperature: '--',
+    humidity: '--',
+    condition: 'Loading weather...',
+    riskLevel: 'Normal',
+    riskColor: 'bg-green-100 text-green-800'
+  });
   
   // Plots State
   const [plots, setPlots] = useState([
@@ -20,11 +27,45 @@ function App() {
   });
   const [submittedExpense, setSubmittedExpense] = useState(false);
 
+  // Fetch Real Live Weather from Open-Meteo API (Kampala: 0.3476° N, 32.5825° E)
   useEffect(() => {
-    fetch('http://localhost:5000/api/weather')
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=0.3476&longitude=32.5825&current=temperature_2m,relative_humidity_2m,precipitation')
       .then(res => res.json())
-      .then(data => setWeather(data))
-      .catch(err => console.log('API offline, using mock state'));
+      .then(data => {
+        if (data && data.current) {
+          const temp = data.current.temperature_2m;
+          const humidity = data.current.relative_humidity_2m;
+          const precip = data.current.precipitation;
+
+          // Dynamic Pest/Blight Risk Logic based on humidity and rain
+          let condition = 'Low Blight Risk';
+          let riskColor = 'bg-green-100 text-green-800';
+
+          if (humidity > 80 && temp > 24) {
+            condition = 'High Blight Risk (High Humidity)';
+            riskColor = 'bg-red-100 text-red-800';
+          } else if (humidity > 70 || precip > 0) {
+            condition = 'Moderate Fungal / Pest Risk';
+            riskColor = 'bg-yellow-100 text-yellow-800';
+          }
+
+          setWeather({
+            temperature: temp,
+            humidity: humidity,
+            condition: condition,
+            riskColor: riskColor
+          });
+        }
+      })
+      .catch(err => {
+        console.log('Weather API error, fallback to mock', err);
+        setWeather({
+          temperature: '26',
+          humidity: '78',
+          condition: 'Moderate Blight Risk',
+          riskColor: 'bg-yellow-100 text-yellow-800'
+        });
+      });
   }, []);
 
   // Handle Adding a New Plot
@@ -79,12 +120,17 @@ function App() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Weather Widget */}
-        <div className="bg-white p-5 rounded-xl shadow-md border-t-4 border-yellow-500">
-          <h3 className="font-bold text-lg text-gray-800 mb-2">Weather & Pest Risk</h3>
-          <p className="text-gray-600">Temp: {weather ? weather.temperature : '28'}°C | Humidity: {weather ? weather.humidity : '75'}%</p>
-          <div className="mt-3 inline-block bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-1 rounded">
-            {weather ? weather.condition : 'Moderate Blight Risk'}
+        {/* Dynamic Live Weather & Pest Risk Widget */}
+        <div className="bg-white p-5 rounded-xl shadow-md border-t-4 border-yellow-500 flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-lg text-gray-800 mb-2">Weather & Pest Risk</h3>
+            <p className="text-gray-600 text-sm">
+              Temp: <span className="font-semibold text-gray-800">{weather.temperature}°C</span> | Humidity: <span className="font-semibold text-gray-800">{weather.humidity}%</span>
+            </p>
+            <p className="text-[11px] text-gray-400 mt-1">Location: Central Region (Live)</p>
+          </div>
+          <div className={`mt-4 inline-block text-xs font-semibold px-2.5 py-1 rounded text-center ${weather.riskColor}`}>
+            {weather.condition}
           </div>
         </div>
         
@@ -110,7 +156,7 @@ function App() {
                   placeholder="Plot Name (e.g. Plot C)" 
                   value={plotForm.name}
                   onChange={e => setPlotForm({...plotForm, name: e.target.value})}
-                  className="w-full p-1.5 border rounded text-xs"
+                  className="w-full p-2 border rounded text-xs bg-white"
                   required 
                 />
                 <input 
@@ -118,13 +164,13 @@ function App() {
                   placeholder="Crop Type (e.g. Tomatoes)" 
                   value={plotForm.crop}
                   onChange={e => setPlotForm({...plotForm, crop: e.target.value})}
-                  className="w-full p-1.5 border rounded text-xs"
+                  className="w-full p-2 border rounded text-xs bg-white"
                   required 
                 />
                 <select 
                   value={plotForm.stage}
                   onChange={e => setPlotForm({...plotForm, stage: e.target.value})}
-                  className="w-full p-1.5 border rounded text-xs bg-white"
+                  className="w-full p-2 border rounded text-xs bg-white"
                 >
                   <option value="Seedling">Seedling Stage</option>
                   <option value="Vegetative">Vegetative Stage</option>
@@ -132,7 +178,7 @@ function App() {
                   <option value="Harvesting">Harvesting Stage</option>
                 </select>
                 <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white p-2 rounded text-xs font-bold shadow-sm">
-                   Save Plot
+                  Save Plot
                 </button>
               </form>
             )}
