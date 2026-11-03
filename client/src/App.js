@@ -2,28 +2,52 @@ import React, { useState, useEffect } from 'react';
 
 function App() {
   const [weather, setWeather] = useState(null);
-  const [plots, setPlots] = useState([]);
+  
+  // Plots State
+  const [plots, setPlots] = useState([
+    { id: '1', name: 'Plot A', crop: 'Maize', stage: 'Vegetative' },
+    { id: '2', name: 'Plot B', crop: 'Beans', stage: 'Flowering' }
+  ]);
+  const [plotForm, setPlotForm] = useState({ name: '', crop: '', stage: 'Vegetative' });
+  const [showAddPlot, setShowAddPlot] = useState(false);
+
+  // Expenses State
   const [expenses, setExpenses] = useState([]);
   const [expenseForm, setExpenseForm] = useState({ 
     plotId: '1', 
     category: 'Seeds', 
     amount: '' 
   });
-  const [submitted, setSubmitted] = useState(false);
+  const [submittedExpense, setSubmittedExpense] = useState(false);
 
   useEffect(() => {
     fetch('http://localhost:5000/api/weather')
       .then(res => res.json())
       .then(data => setWeather(data))
       .catch(err => console.log('API offline, using mock state'));
-
-    fetch('http://localhost:5000/api/plots')
-      .then(res => res.json())
-      .then(data => setPlots(data))
-      .catch(err => console.log('API offline, using mock state'));
   }, []);
 
-  const handleSubmit = (e) => {
+  // Handle Adding a New Plot
+  const handleAddPlot = (e) => {
+    e.preventDefault();
+    const newPlot = {
+      id: Date.now().toString(),
+      name: plotForm.name,
+      crop: plotForm.crop,
+      stage: plotForm.stage
+    };
+    setPlots([...plots, newPlot]);
+    setPlotForm({ name: '', crop: '', stage: 'Vegetative' });
+    setShowAddPlot(false);
+  };
+
+  // Handle Removing a Plot
+  const handleRemovePlot = (id) => {
+    setPlots(plots.filter(p => p.id !== id));
+  };
+
+  // Handle Expense Submission
+  const handleExpenseSubmit = (e) => {
     e.preventDefault();
     const newExpense = {
       plotId: expenseForm.plotId,
@@ -40,9 +64,9 @@ function App() {
       .then(res => res.json())
       .then(data => {
         setExpenses([data.data, ...expenses]);
-        setSubmitted(true);
-        setExpenseForm({ plotId: '1', category: 'Seeds', amount: '' });
-        setTimeout(() => setSubmitted(false), 3000);
+        setSubmittedExpense(true);
+        setExpenseForm({ plotId: plots[0] ? plots[0].id : '1', category: 'Seeds', amount: '' });
+        setTimeout(() => setSubmittedExpense(false), 3000);
       })
       .catch(err => console.log('Error posting expense', err));
   };
@@ -64,27 +88,86 @@ function App() {
           </div>
         </div>
         
-        {/* Active Plots */}
-        <div className="bg-white p-5 rounded-xl shadow-md border-t-4 border-green-600">
-          <h3 className="font-bold text-lg text-gray-800 mb-2">Active Plots</h3>
-          {plots.length > 0 ? plots.map(p => (
-            <div key={p.id} className="text-sm text-gray-600 mb-1">
-              <span className="font-semibold">{p.name}:</span> {p.crop} ({p.stage} Stage)
+        {/* Active Plots Management */}
+        <div className="bg-white p-5 rounded-xl shadow-md border-t-4 border-green-600 flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-bold text-lg text-gray-800">Active Plots</h3>
+              <button 
+                onClick={() => setShowAddPlot(!showAddPlot)}
+                className="text-xs bg-green-100 text-green-800 font-semibold px-2 py-1 rounded hover:bg-green-200"
+              >
+                {showAddPlot ? 'Cancel' : '+ Add Plot'}
+              </button>
             </div>
-          )) : (
-            <>
-              <p className="text-gray-600 text-sm">Plot A: Maize (Vegetative Stage)</p>
-              <p className="text-gray-600 text-sm">Plot B: Beans (Flowering Stage)</p>
-            </>
-          )}
+
+            {/* Add Plot Form Modal/Drawer */}
+            {showAddPlot && (
+              <form onSubmit={handleAddPlot} className="bg-gray-50 p-3 rounded mb-3 border space-y-2">
+                <h4 className="text-xs font-bold text-gray-700">New Plot Details</h4>
+                <input 
+                  type="text" 
+                  placeholder="Plot Name (e.g. Plot C)" 
+                  value={plotForm.name}
+                  onChange={e => setPlotForm({...plotForm, name: e.target.value})}
+                  className="w-full p-1.5 border rounded text-xs"
+                  required 
+                />
+                <input 
+                  type="text" 
+                  placeholder="Crop Type (e.g. Tomatoes)" 
+                  value={plotForm.crop}
+                  onChange={e => setPlotForm({...plotForm, crop: e.target.value})}
+                  className="w-full p-1.5 border rounded text-xs"
+                  required 
+                />
+                <select 
+                  value={plotForm.stage}
+                  onChange={e => setPlotForm({...plotForm, stage: e.target.value})}
+                  className="w-full p-1.5 border rounded text-xs bg-white"
+                >
+                  <option value="Seedling">Seedling Stage</option>
+                  <option value="Vegetative">Vegetative Stage</option>
+                  <option value="Flowering">Flowering Stage</option>
+                  <option value="Harvesting">Harvesting Stage</option>
+                </select>
+                <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white p-2 rounded text-xs font-bold shadow-sm">
+                   Save Plot
+                </button>
+              </form>
+            )}
+
+            {/* Plots List */}
+            {plots.length === 0 ? (
+              <p className="text-xs text-gray-400">No active plots added.</p>
+            ) : (
+              <ul className="space-y-2 max-h-56 overflow-y-auto">
+                {plots.map(p => (
+                  <li key={p.id} className="text-xs bg-gray-50 p-2 rounded border flex justify-between items-center">
+                    <div>
+                      <span className="font-bold text-gray-800">{p.name}:</span> {p.crop} 
+                      <span className="block text-gray-500 text-[10px]">({p.stage})</span>
+                    </div>
+                    <button 
+                      onClick={() => handleRemovePlot(p.id)}
+                      className="text-red-600 hover:text-red-800 font-bold px-1.5 py-0.5 text-xs rounded bg-red-50 border border-red-200"
+                      title="Remove Plot"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         {/* Quick Log Expense Form */}
         <div className="bg-white p-5 rounded-xl shadow-md border-t-4 border-blue-600">
           <h3 className="font-bold text-lg text-gray-800 mb-2">Quick Log Expense</h3>
-          {submitted && <div className="mb-2 text-xs text-green-600 font-semibold">Expense logged successfully!</div>}
+          {submittedExpense && <div className="mb-2 text-xs text-green-600 font-semibold">Expense logged successfully!</div>}
           
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleExpenseSubmit} className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Select Plot</label>
               <select 
@@ -92,8 +175,9 @@ function App() {
                 onChange={e => setExpenseForm({...expenseForm, plotId: e.target.value})}
                 className="w-full p-2 border rounded text-sm bg-white"
               >
-                <option value="1">Plot A (Maize)</option>
-                <option value="2">Plot B (Beans)</option>
+                {plots.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.crop})</option>
+                ))}
               </select>
             </div>
 
@@ -135,13 +219,16 @@ function App() {
             {expenses.length === 0 ? (
               <p className="text-xs text-gray-400">No expenses recorded yet.</p>
             ) : (
-              <ul className="space-y-2 max-h-40 overflow-y-auto">
-                {expenses.map((exp, index) => (
-                  <li key={index} className="text-xs bg-gray-50 p-2 rounded border flex justify-between items-center">
-                    <span>{exp.category} (Plot {exp.plotId})</span>
-                    <span className="font-bold text-green-700">UGX {Number(exp.amount).toLocaleString()}</span>
-                  </li>
-                ))}
+              <ul className="space-y-2 max-h-32 overflow-y-auto">
+                {expenses.map((exp, index) => {
+                  const targetPlot = plots.find(p => p.id === exp.plotId);
+                  return (
+                    <li key={index} className="text-xs bg-gray-50 p-2 rounded border flex justify-between items-center">
+                      <span>{exp.category} ({targetPlot ? targetPlot.name : 'Plot'})</span>
+                      <span className="font-bold text-green-700">UGX {Number(exp.amount).toLocaleString()}</span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
