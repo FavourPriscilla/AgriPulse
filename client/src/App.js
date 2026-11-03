@@ -3,8 +3,12 @@ import React, { useState, useEffect } from 'react';
 function App() {
   const [weather, setWeather] = useState(null);
   const [plots, setPlots] = useState([]);
-  const [expenses, setExpenses] = useState([]); // State to store recorded expenses
-  const [expenseForm, setExpenseForm] = useState({ plotId: '1', category: 'Seeds', amount: '', date: '' });
+  const [expenses, setExpenses] = useState([]);
+  const [expenseForm, setExpenseForm] = useState({ 
+    plotId: '1', 
+    category: 'Seeds', 
+    amount: '' 
+  });
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
@@ -35,10 +39,9 @@ function App() {
     })
       .then(res => res.json())
       .then(data => {
-        // Add the new expense to our local state list so it renders instantly
         setExpenses([data.data, ...expenses]);
         setSubmitted(true);
-        setExpenseForm({ plotId: '1', category: 'Seeds', amount: '', date: '' });
+        setExpenseForm({ plotId: '1', category: 'Seeds', amount: '' });
         setTimeout(() => setSubmitted(false), 3000);
       })
       .catch(err => console.log('Error posting expense', err));
@@ -76,19 +79,51 @@ function App() {
           )}
         </div>
 
-        {/* Quick Log Expense & Expense List */}
+        {/* Quick Log Expense Form */}
         <div className="bg-white p-5 rounded-xl shadow-md border-t-4 border-blue-600">
           <h3 className="font-bold text-lg text-gray-800 mb-2">Quick Log Expense</h3>
           {submitted && <div className="mb-2 text-xs text-green-600 font-semibold">Expense logged successfully!</div>}
+          
           <form onSubmit={handleSubmit} className="space-y-3">
-            <input 
-              type="number" 
-              placeholder="Amount ($)" 
-              value={expenseForm.amount}
-              onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})}
-              className="w-full p-2 border rounded text-sm"
-              required 
-            />
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Select Plot</label>
+              <select 
+                value={expenseForm.plotId}
+                onChange={e => setExpenseForm({...expenseForm, plotId: e.target.value})}
+                className="w-full p-2 border rounded text-sm bg-white"
+              >
+                <option value="1">Plot A (Maize)</option>
+                <option value="2">Plot B (Beans)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Expense Category</label>
+              <select 
+                value={expenseForm.category}
+                onChange={e => setExpenseForm({...expenseForm, category: e.target.value})}
+                className="w-full p-2 border rounded text-sm bg-white"
+              >
+                <option value="Seeds">Seeds</option>
+                <option value="Fertilizer">Fertilizer</option>
+                <option value="Pesticide">Pesticide</option>
+                <option value="Labor">Labor</option>
+                <option value="Equipment">Equipment</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Amount (UGX)</label>
+              <input 
+                type="number" 
+                placeholder="e.g. 50000" 
+                value={expenseForm.amount}
+                onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})}
+                className="w-full p-2 border rounded text-sm"
+                required 
+              />
+            </div>
+
             <button type="submit" className="w-full bg-green-600 text-white p-2 rounded text-sm font-semibold hover:bg-green-700">
               Add Expense
             </button>
@@ -103,8 +138,8 @@ function App() {
               <ul className="space-y-2 max-h-40 overflow-y-auto">
                 {expenses.map((exp, index) => (
                   <li key={index} className="text-xs bg-gray-50 p-2 rounded border flex justify-between items-center">
-                    <span>Category: {exp.category} (Plot {exp.plotId})</span>
-                    <span className="font-bold text-green-700">${exp.amount}</span>
+                    <span>{exp.category} (Plot {exp.plotId})</span>
+                    <span className="font-bold text-green-700">UGX {Number(exp.amount).toLocaleString()}</span>
                   </li>
                 ))}
               </ul>
