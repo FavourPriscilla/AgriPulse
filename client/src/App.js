@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authMode, setAuthMode] = useState('signup'); // 'signup' or 'login'
+  const [userAccount, setUserAccount] = useState(null); // Stores registered user
   
+  const [authForm, setAuthForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [authError, setAuthError] = useState('');
+  const [currentPage, setCurrentPage] = useState('login');
+
   const [weather, setWeather] = useState({
     temperature: '--',
     humidity: '--',
@@ -53,6 +64,53 @@ function App() {
       });
   }, []);
 
+  // Handle Account Registration
+  const handleSignUp = (e) => {
+    e.preventDefault();
+    setAuthError('');
+
+    if (authForm.password !== authForm.confirmPassword) {
+      setAuthError('Passwords do not match.');
+      return;
+    }
+
+    // Save registered user details
+    const newUser = {
+      name: authForm.name,
+      email: authForm.email,
+      password: authForm.password
+    };
+
+    setUserAccount(newUser);
+    alert('Account created successfully! You can now log in.');
+    setAuthMode('login');
+    setAuthForm({ name: '', email: newUser.email, password: '', confirmPassword: '' });
+  };
+
+  // Handle Login Authentication
+  const handleLogin = (e) => {
+    e.preventDefault();
+    setAuthError('');
+
+    if (!userAccount) {
+      setAuthError('No registered account found. Please sign up first.');
+      return;
+    }
+
+    if (authForm.email === userAccount.email && authForm.password === userAccount.password) {
+      setIsLoggedIn(true);
+      setCurrentPage('dashboard');
+    } else {
+      setAuthError('Invalid email or password.');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentPage('login');
+    setAuthForm({ name: '', email: '', password: '', confirmPassword: '' });
+  };
+
   const handleAddPlot = (e) => {
     e.preventDefault();
     setPlots([...plots, { id: Date.now().toString(), ...plotForm }]);
@@ -89,28 +147,166 @@ function App() {
 
   return (
     <div>
-      {/* Top Multi-Page Navigation Header */}
+      {/* Top Header */}
       <header className="app-header">
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>🌱 AgriPulse Portal</h1>
           <p style={{ fontSize: '12px', color: '#a7f3d0', margin: 0 }}>Uganda Farm Management System</p>
         </div>
+
+        {/* 5 Navigation Tabs */}
         <nav className="nav-tabs">
-          <button className={`nav-btn ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentPage('dashboard')}>1. Dashboard</button>
-          <button className={`nav-btn ${currentPage === 'plots' ? 'active' : ''}`} onClick={() => setCurrentPage('plots')}>2. Plots</button>
-          <button className={`nav-btn ${currentPage === 'weather' ? 'active' : ''}`} onClick={() => setCurrentPage('weather')}>3. Weather & Advisory</button>
-          <button className={`nav-btn ${currentPage === 'expenses' ? 'active' : ''}`} onClick={() => setCurrentPage('expenses')}>4. Expenses</button>
-          <button className={`nav-btn ${currentPage === 'advisory' ? 'active' : ''}`} onClick={() => setCurrentPage('advisory')}>5. Crop Advisory</button>
+          <button className={`nav-btn ${currentPage === 'login' ? 'active' : ''}`} onClick={() => setCurrentPage('login')}>
+            1. Auth / Access
+          </button>
+          <button className={`nav-btn ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentPage('dashboard')}>
+            2. Dashboard
+          </button>
+          <button className={`nav-btn ${currentPage === 'plots' ? 'active' : ''}`} onClick={() => setCurrentPage('plots')}>
+            3. Plots
+          </button>
+          <button className={`nav-btn ${currentPage === 'weather' ? 'active' : ''}`} onClick={() => setCurrentPage('weather')}>
+            4. Weather & Advisory
+          </button>
+          <button className={`nav-btn ${currentPage === 'expenses' ? 'active' : ''}`} onClick={() => setCurrentPage('expenses')}>
+            5. Expenses
+          </button>
+
+          {isLoggedIn && (
+            <button 
+              onClick={handleLogout}
+              style={{ backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', marginLeft: '12px', cursor: 'pointer' }}
+            >
+              Logout
+            </button>
+          )}
         </nav>
       </header>
 
       <main className="main-container">
-        
-        {/* PAGE 1: DASHBOARD */}
+
+        {/* PAGE 1: AUTHENTICATION (SIGN UP & LOGIN) */}
+        {currentPage === 'login' && (
+          <div className="page-card" style={{ maxWidth: '440px', margin: '30px auto' }}>
+            <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '20px' }}>
+              <button 
+                onClick={() => { setAuthMode('signup'); setAuthError(''); }}
+                style={{ flex: 1, padding: '10px', background: 'none', border: 'none', borderBottom: authMode === 'signup' ? '3px solid #059669' : 'none', fontWeight: 'bold', color: authMode === 'signup' ? '#059669' : '#64748b', cursor: 'pointer' }}
+              >
+                Create Account
+              </button>
+              <button 
+                onClick={() => { setAuthMode('login'); setAuthError(''); }}
+                style={{ flex: 1, padding: '10px', background: 'none', border: 'none', borderBottom: authMode === 'login' ? '3px solid #059669' : 'none', fontWeight: 'bold', color: authMode === 'login' ? '#059669' : '#64748b', cursor: 'pointer' }}
+              >
+                Log In
+              </button>
+            </div>
+
+            {authError && (
+              <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '10px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', marginBottom: '16px' }}>
+                ⚠️ {authError}
+              </div>
+            )}
+
+            {isLoggedIn ? (
+              <div style={{ background: '#d1fae5', color: '#065f46', padding: '16px', borderRadius: '8px', textAlign: 'center', fontWeight: 'bold', fontSize: '14px' }}>
+                ✓ Welcome back, {userAccount ? userAccount.name : 'Farmer'}!
+                <button onClick={() => setCurrentPage('dashboard')} className="btn-primary" style={{ marginTop: '12px', width: '100%' }}>
+                  Proceed to Dashboard
+                </button>
+              </div>
+            ) : authMode === 'signup' ? (
+              /* SIGN UP FORM */
+              <form onSubmit={handleSignUp}>
+                <div className="form-group">
+                  <label className="form-label">Full Name / Farm Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. John Mukasa" 
+                    value={authForm.name}
+                    onChange={e => setAuthForm({...authForm, name: e.target.value})}
+                    className="form-control"
+                    required 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email Address</label>
+                  <input 
+                    type="email" 
+                    placeholder="farmer@agripulse.ug" 
+                    value={authForm.email}
+                    onChange={e => setAuthForm({...authForm, email: e.target.value})}
+                    className="form-control"
+                    required 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Password</label>
+                  <input 
+                    type="password" 
+                    placeholder="••••••••" 
+                    value={authForm.password}
+                    onChange={e => setAuthForm({...authForm, password: e.target.value})}
+                    className="form-control"
+                    required 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Confirm Password</label>
+                  <input 
+                    type="password" 
+                    placeholder="••••••••" 
+                    value={authForm.confirmPassword}
+                    onChange={e => setAuthForm({...authForm, confirmPassword: e.target.value})}
+                    className="form-control"
+                    required 
+                  />
+                </div>
+                <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '8px' }}>
+                  Register Account
+                </button>
+              </form>
+            ) : (
+              /* LOGIN FORM */
+              <form onSubmit={handleLogin}>
+                <div className="form-group">
+                  <label className="form-label">Registered Email</label>
+                  <input 
+                    type="email" 
+                    placeholder="farmer@agripulse.ug" 
+                    value={authForm.email}
+                    onChange={e => setAuthForm({...authForm, email: e.target.value})}
+                    className="form-control"
+                    required 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Password</label>
+                  <input 
+                    type="password" 
+                    placeholder="••••••••" 
+                    value={authForm.password}
+                    onChange={e => setAuthForm({...authForm, password: e.target.value})}
+                    className="form-control"
+                    required 
+                  />
+                </div>
+                <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '8px' }}>
+                  Log In
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* PAGE 2: DASHBOARD */}
         {currentPage === 'dashboard' && (
           <div className="page-card">
             <h2 className="page-title">📊 Farm Overview Dashboard</h2>
-            <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '24px' }}>Welcome back! Here is a high-level summary of your farm operations in the Central Region.</p>
+            <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '24px' }}>
+              Welcome back, <strong>{userAccount ? userAccount.name : 'Farmer'}</strong>! Here is a high-level summary of your farm operations.
+            </p>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
               <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -133,7 +329,7 @@ function App() {
           </div>
         )}
 
-        {/* PAGE 2: PLOT MANAGEMENT */}
+        {/* PAGE 3: PLOT MANAGEMENT */}
         {currentPage === 'plots' && (
           <div className="page-card">
             <h2 className="page-title">🌾 Plot Management</h2>
@@ -177,7 +373,7 @@ function App() {
           </div>
         )}
 
-        {/* PAGE 3: WEATHER & ADVISORY */}
+        {/* PAGE 4: WEATHER & ADVISORY */}
         {currentPage === 'weather' && (
           <div className="page-card">
             <h2 className="page-title">🌤️ Weather & Pest Risk Advisory</h2>
@@ -205,7 +401,7 @@ function App() {
           </div>
         )}
 
-        {/* PAGE 4: EXPENSE TRACKER */}
+        {/* PAGE 5: EXPENSE TRACKER */}
         {currentPage === 'expenses' && (
           <div className="page-card">
             <h2 className="page-title">💰 Farm Expense Logger (UGX)</h2>
@@ -259,33 +455,6 @@ function App() {
                 })}
               </ul>
             )}
-          </div>
-        )}
-
-        {/* PAGE 5: CROP ADVISORY & BEST PRACTICES */}
-        {currentPage === 'advisory' && (
-          <div className="page-card">
-            <h2 className="page-title">🌱 Crop Advisory & Best Practices</h2>
-            <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '20px' }}>Expert farming guidelines tailored for local staple crops to maximize yield and prevent disease.</p>
-            
-            <div style={{ display: 'grid', gap: '16px' }}>
-              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ color: '#064e3b', marginTop: 0, fontSize: '16px' }}>🌽 Maize Production Guidelines</h3>
-                <p style={{ fontSize: '13px', color: '#475569', marginBottom: '8px' }}><strong>Spacing:</strong> Maintain 75cm between rows and 25cm between plants.</p>
-                <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}><strong>Weeding:</strong> Keep fields weed-free especially during the first 4 weeks after emergence to prevent nutrient competition.</p>
-              </div>
-
-              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ color: '#064e3b', marginTop: 0, fontSize: '16px' }}>🫘 Bean Management Tips</h3>
-                <p style={{ fontSize: '13px', color: '#475569', marginBottom: '8px' }}><strong>Moisture Control:</strong> Beans are highly sensitive to waterlogging. Ensure plots have proper drainage channels during heavy rains.</p>
-                <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}><strong>Harvesting:</strong> Harvest when pods turn golden brown to minimize shattering and grain loss.</p>
-              </div>
-
-              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <h3 style={{ color: '#064e3b', marginTop: 0, fontSize: '16px' }}>🛡️ Integrated Pest Management (IPM)</h3>
-                <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>Rotate crops annually between legumes (beans) and cereals (maize) to replenish soil nitrogen naturally and disrupt pest life cycles.</p>
-              </div>
-            </div>
           </div>
         )}
 
